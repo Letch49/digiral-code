@@ -16,8 +16,8 @@ class RegistrationAPI(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email, password = request.data['email'], request.data['password']
-        user = User.objects.create_user(email, password)
+        email, password, is_teacher = request.data['email'], request.data['password'], request.data['is_teacher']
+        user = User.objects.create_user(email, password, is_teacher)
         return Response(user.get_token())
 
 

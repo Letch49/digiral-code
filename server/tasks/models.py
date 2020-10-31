@@ -20,14 +20,16 @@ class Solution(models.Model):
     STATUS_RIGHT = 'right'
     STATUS_WRONG = 'wrong'
 
-    STATUSES = [
+    STATUSES = (
         STATUS_NEW, STATUS_PROCESSING, STATUS_RIGHT, STATUS_WRONG
-    ]
+    )
 
-    STATUSES_CHOICES = {o: o for o in STATUSES}
+    STATUSES_CHOICES = ((o, o) for o in STATUSES)
 
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='*')
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='solutions')
+    text = models.TextField()
+    language = models.CharField(max_length=255)
     created = models.DateTimeField(auto_now_add=True)
     status = models.CharField(choices=STATUSES_CHOICES, max_length=25, default=STATUS_NEW)
     score = models.IntegerField(default=0)

@@ -1,15 +1,18 @@
 from django.db import transaction
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, get_object_or_404
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, get_object_or_404, ListAPIView, \
+    RetrieveDestroyAPIView, RetrieveAPIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tasks.models import Task, Solution
+from tasks.serializers import TaskSerializer, SolutionSerializer
 from users.api import IsTeacher
 
 
-class TaskListCreateAPI(ListCreateAPIView):
+class TeacherTaskListCreateAPI(ListCreateAPIView):
     permission_classes = [IsTeacher]
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
@@ -18,46 +21,79 @@ class TaskListCreateAPI(ListCreateAPIView):
         return queryset.filter(owner=self.request.user)
 
     def perform_create(self, serializer):
-        return serializer.save(owner=self.request.user, description=description)
+        return serializer.save(creator=self.request.user)
 
 
-class AppealRetrieveUpdateCancelAPI(RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated]
-    queryset = Appeal.objects.all()
-    serializer_class = AppealSerializer
+class TeacherTaskRetrieveUpdateDeleteAPI(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsTeacher]
+    queryset = Task.objects.all()
+    serializer_class = TaskSerializer
     lookup_url_kwarg = 'id'
     lookup_field = 'id'
 
     def filter_queryset(self, queryset):
         return queryset.filter(owner=self.request.user)
 
+    def perform_update(self, serializer):
+        serializer.save()
+
     def perform_destroy(self, instance):
-        if instance.status in (instance.STATUS_NEW,):
-            instance.status = instance.STATUS_CANCELED
-            instance.save()
+        instance.is_active = False
+        instance.save()
 
 
-class AppealSaveDocumentAPI(APIView):
-    parser_class = (MultiPartParser,)
+class TeacherSolutionListAPI(ListAPIView):
+    permission_classes = [IsTeacher]
+    queryset = Solution.objects.all()
+    serializer_class = SolutionSerializer
+
+    def filter_queryset(self, queryset):
+        return queryset.filter(task__creator=self.request.user)
+
+
+class TaskListAPI(ListAPIView):
+    permission_classes = [AllowAny]
+    queryset = Task.objects.all()
+    serializer_class = TaskSerializer
+
+    def filter_queryset(self, queryset):
+        return queryset.filter(is_active=True)
+
+
+class TaskRetrieveAPI(RetrieveAPIView):
+    permission_classes = [AllowAny]
+    queryset = Task.objects.all()
+    serializer_class = TaskSerializer
+    lookup_url_kwarg = 'id'
+    lookup_field = 'id'
+
+    def filter_queryset(self, queryset):
+        return queryset.filter(is_active=True)
+
+
+class SolutionListCreateAPI(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
-
-    def post(self, request, id):
-        appeal = get_object_or_404(Appeal.objects.filter(owner=self.request.user), pk=id)
-        appeal.file = request.FILES.get('file')
-        appeal.save()
-        return Response()
-
-
-class AppealSendAPI(APIView):
-    parser_class = (MultiPartParser,)
-    permission_classes = [IsAuthenticated]
+    queryset = Solution.objects.all()
+    serializer_class = SolutionSerializer
 
     def filter_queryset(self, queryset):
         return queryset.filter(owner=self.request.user)
 
-    @transaction.atomic()
-    def post(self, request, id):
-        appeal = get_object_or_404(Appeal.objects.filter(owner=self.request.user), pk=id)
-        appeal.status = appeal.STATUS_DONE
-        appeal.save()
-        return Response()
+    def perform_create(self, serializer):
+        return serializer.save(owner=self.request.user)
+
+
+class SolutionRetrieveDeleteAPI(RetrieveDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = Solution.objects.all()
+    serializer_class = TaskSerializer
+    lookup_url_kwarg = 'id'
+    lookup_field = 'id'
+
+    def filter_queryset(self, queryset):
+        return queryset.filter()
+
+    def perform_destroy(self, instance):
+        if instance.owner.id != self.request.user.id:
+            raise PermissionDenied()
+        instance.delete()

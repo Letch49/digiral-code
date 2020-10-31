@@ -5,19 +5,19 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class UserManager(BaseUserManager):
-    def _create_user(self, email, password, **extra_fields):
+    def _create_user(self, email, password, is_teacher, **extra_fields):
         print(extra_fields)
         email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
+        user = self.model(email=email, is_teacher=is_teacher, **extra_fields)
         user.set_password(password)
         user.save()
         return user
 
-    def create_user(self, email, password, **extra_fields) -> 'User':
-        return self._create_user(email=email, password=password, **extra_fields)
+    def create_user(self, email, password, is_teacher, **extra_fields) -> 'User':
+        return self._create_user(email=email, password=password, is_teacher=is_teacher, **extra_fields)
 
     def create_superuser(self, email, password, **extra_fields) -> 'User':
-        return self._create_user(email=email, password=password, is_superuser=True, **extra_fields)
+        return self._create_user(email=email, password=password, is_superuser=True, is_teacher=True, **extra_fields)
 
 
 class User(AbstractBaseUser):
