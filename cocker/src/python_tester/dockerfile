@@ -1,0 +1,8 @@
+FROM python:3
+
+ENV PYTHONUNBUFFERED 1
+
+COPY runner.py /src/python_tester/runner.py
+COPY tester.py /src/python_tester/tester.py
+
+ENTRYPOINT [ "python3", "-u", "/src/python_tester/runner.py" ]
